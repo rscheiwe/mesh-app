@@ -1,7 +1,7 @@
 import { Palette } from "@/components/Palette";
 import { Canvas } from "@/components/Canvas";
 import { Inspector } from "@/components/Inspector";
-import { Runner } from "@/components/Runner";
+import { ChatBubble } from "@/components/ChatBubble";
 import { SamplesLoader } from "@/components/SamplesLoader";
 import { GraphActions } from "@/components/GraphActions";
 
@@ -41,10 +41,8 @@ function App() {
         </div>
       </div>
 
-      {/* Bottom: Runner */}
-      <div className="h-64 border-t">
-        <Runner />
-      </div>
+      {/* Chat Bubble */}
+      <ChatBubble />
     </div>
   );
 }
