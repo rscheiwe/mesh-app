@@ -1,0 +1,24 @@
+# FastAPI and web server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Pydantic for settings management
+pydantic==2.10.5
+pydantic-settings==2.7.1
+
+# Mesh orchestration framework (install from GitHub)
+git+https://github.com/rscheiwe/mesh.git@main
+
+# Vel agent framework (required for Mesh agents)
+git+https://github.com/rscheiwe/vel.git@main
+
+# Agent SDKs (optional - install what you need)
+# openai-agents-sdk  # Uncomment if using OpenAI Agents SDK
+
+# OpenAI and Anthropic for LLM providers
+openai>=1.54.0
+anthropic>=0.39.0
+
+# Additional dependencies
+python-dotenv==1.0.1

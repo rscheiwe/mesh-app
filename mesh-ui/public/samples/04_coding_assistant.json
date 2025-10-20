@@ -1,0 +1,38 @@
+{
+  "id": "coding-assistant",
+  "name": "Coding Assistant",
+  "description": "Generate code with a coding agent",
+  "nodes": [
+    {
+      "id": "START",
+      "type": "startAgentflow",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "defName": "start",
+        "config": {
+          "id": "START"
+        }
+      }
+    },
+    {
+      "id": "coder_0",
+      "type": "agentAgentflow",
+      "position": { "x": 400, "y": 200 },
+      "data": {
+        "defName": "agent",
+        "config": {
+          "id": "coder_0",
+          "agent": "coding_agent",
+          "systemPrompt": "You are a coding assistant. Write clean, well-documented code for: {{$input}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-START-coder_0",
+      "source": "START",
+      "target": "coder_0"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "research-to-writer",
+  "name": "Research to Writer",
+  "description": "Research a topic, then write an article about it",
+  "nodes": [
+    {
+      "id": "START",
+      "type": "startAgentflow",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "defName": "start",
+        "config": {
+          "id": "START"
+        }
+      }
+    },
+    {
+      "id": "research_0",
+      "type": "agentAgentflow",
+      "position": { "x": 350, "y": 200 },
+      "data": {
+        "defName": "agent",
+        "config": {
+          "id": "research_0",
+          "agent": "research_agent",
+          "systemPrompt": "Research the following topic and provide key facts: {{$input}}"
+        }
+      }
+    },
+    {
+      "id": "writer_0",
+      "type": "agentAgentflow",
+      "position": { "x": 600, "y": 200 },
+      "data": {
+        "defName": "agent",
+        "config": {
+          "id": "writer_0",
+          "agent": "writer_agent",
+          "systemPrompt": "Based on this research: {{research_0.output}}, write a short engaging article."
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-START-research_0",
+      "source": "START",
+      "target": "research_0"
+    },
+    {
+      "id": "e-research_0-writer_0",
+      "source": "research_0",
+      "target": "writer_0"
+    }
+  ]
+}

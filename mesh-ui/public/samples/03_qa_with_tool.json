@@ -1,0 +1,56 @@
+{
+  "id": "qa-with-tool",
+  "name": "QA with Tool",
+  "description": "Answer questions using a tool for calculations",
+  "nodes": [
+    {
+      "id": "START",
+      "type": "startAgentflow",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "defName": "start",
+        "config": {
+          "id": "START"
+        }
+      }
+    },
+    {
+      "id": "tool_0",
+      "type": "toolAgentflow",
+      "position": { "x": 350, "y": 200 },
+      "data": {
+        "defName": "tool",
+        "config": {
+          "id": "tool_0",
+          "functionName": "calculate_stats",
+          "bindings": "{\"numbers\": [10, 20, 30, 40, 50]}"
+        }
+      }
+    },
+    {
+      "id": "qa_0",
+      "type": "agentAgentflow",
+      "position": { "x": 600, "y": 200 },
+      "data": {
+        "defName": "agent",
+        "config": {
+          "id": "qa_0",
+          "agent": "qa_agent",
+          "systemPrompt": "Based on these statistics: {{tool_0.output}}, answer: {{$input}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-START-tool_0",
+      "source": "START",
+      "target": "tool_0"
+    },
+    {
+      "id": "e-tool_0-qa_0",
+      "source": "tool_0",
+      "target": "qa_0"
+    }
+  ]
+}

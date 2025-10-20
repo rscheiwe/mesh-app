@@ -1,0 +1,26 @@
+[
+  {
+    "id": "01_simple_writer",
+    "name": "Simple Writer",
+    "description": "Basic flow: Start → Writer Agent → End",
+    "file": "01_simple_writer.json"
+  },
+  {
+    "id": "02_research_to_writer",
+    "name": "Research to Writer",
+    "description": "Research a topic, then write an article",
+    "file": "02_research_to_writer.json"
+  },
+  {
+    "id": "03_qa_with_tool",
+    "name": "QA with Tool",
+    "description": "Answer questions using calculation tool",
+    "file": "03_qa_with_tool.json"
+  },
+  {
+    "id": "04_coding_assistant",
+    "name": "Coding Assistant",
+    "description": "Generate code with coding agent",
+    "file": "04_coding_assistant.json"
+  }
+]
