@@ -25,6 +25,7 @@ const nodeTypes: NodeTypes = {
   agentAgentflow: GenericNode,
   toolAgentflow: ToolNode,
   conditionAgentflow: ConditionNode,
+  foreachAgentflow: GenericNode,
   loopAgentflow: GenericNode,
   endAgentflow: GenericNode,
 };
@@ -68,7 +69,9 @@ function CanvasInner() {
 
       // Generate readable ID based on node type
       // Count existing nodes of this type to create unique sequential IDs
-      const existingOfType = nodes.filter(n => n.data.defName === def.name).length;
+      const existingOfType = nodes.filter(
+        (n) => n.data.defName === def.name
+      ).length;
 
       // Special handling for Start/End nodes
       let nodeId: string;
@@ -155,7 +158,7 @@ function CanvasInner() {
         fitView
         deleteKeyCode="Delete"
       >
-        <Controls />
+        <Controls position="bottom-center" />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
       </ReactFlow>
     </div>

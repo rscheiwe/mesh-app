@@ -12,14 +12,17 @@ import {
 import { Button } from "@/components/ui/button";
 import type { InputDef } from "@/types";
 import { useBackend } from "@/contexts/BackendContext";
+import type { Edge } from "reactflow";
 
 interface FieldRendererProps {
   input: InputDef;
   value: any;
   onChange: (value: any) => void;
+  nodeId?: string;
+  edges?: Edge[];
 }
 
-export function FieldRenderer({ input, value, onChange }: FieldRendererProps) {
+export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRendererProps) {
   // Get current value or default
   const currentValue = value !== undefined ? value : input.default;
 
@@ -233,6 +236,54 @@ export function FieldRenderer({ input, value, onChange }: FieldRendererProps) {
           />
         </div>
       );
+
+    case "nodeOptions": {
+      // Get nodes that have edges leading into the current node
+      const incomingNodeIds: string[] = [];
+      if (nodeId && edges) {
+        const incomingEdges = edges.filter(edge => edge.target === nodeId);
+        incomingNodeIds.push(...incomingEdges.map(edge => edge.source));
+      }
+
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={input.name}>
+            {input.label}
+            {input.optional && (
+              <span className="text-muted-foreground ml-1">(optional)</span>
+            )}
+          </Label>
+          {input.description && (
+            <p className="text-xs text-muted-foreground">{input.description}</p>
+          )}
+          <Select
+            value={currentValue || ""}
+            onValueChange={onChange}
+            disabled={incomingNodeIds.length === 0}
+          >
+            <SelectTrigger id={input.name}>
+              <SelectValue placeholder={
+                incomingNodeIds.length === 0
+                  ? "No incoming connections"
+                  : input.placeholder || "Select node..."
+              } />
+            </SelectTrigger>
+            <SelectContent>
+              {incomingNodeIds.length === 0 && (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                  Connect nodes to this node to see options
+                </div>
+              )}
+              {incomingNodeIds.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
 
     case "array":
       return (

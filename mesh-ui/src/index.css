@@ -57,3 +57,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ReactFlow Controls */
+.react-flow__panel.react-flow__controls {
+  display: flex;
+}
+
+/* Hide ReactFlow attribution */
+.react-flow__panel.react-flow__attribution {
+  display: none;
+}

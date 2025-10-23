@@ -3,12 +3,34 @@ import { useGraphStore } from "@/store/graph";
 import { NODE_DEF_MAP } from "@/registry";
 import { FieldRenderer } from "@/lib/form/FieldRenderer";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Settings } from "lucide-react";
 
-export function Inspector() {
+interface InspectorProps {
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+}
+
+export function Inspector({ isCollapsed = false, onToggle }: InspectorProps) {
   const selectedNode = useGraphStore((state) => state.getSelectedNode());
+  const edges = useGraphStore((state) => state.edges);
   const updateNode = useGraphStore((state) => state.updateNode);
   const deleteNode = useGraphStore((state) => state.deleteNode);
+
+  if (isCollapsed) {
+    return (
+      <div
+        className="h-full flex flex-col items-center py-6 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="writing-mode-vertical text-sm font-semibold text-muted-foreground">
+          <Settings className="w-5 h-5 mb-4" />
+          <span style={{ writingMode: "vertical-rl" }} className="text-xs">
+            INSPECTOR
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (!selectedNode) {
     return (
@@ -105,6 +127,8 @@ export function Inspector() {
                 input={input}
                 value={selectedNode.data.config?.[input.name]}
                 onChange={(value) => handleFieldChange(input.name, value)}
+                nodeId={selectedNode.id}
+                edges={edges}
               />
             ))}
 

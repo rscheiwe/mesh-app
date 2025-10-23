@@ -215,6 +215,17 @@ export const NODE_DEFS: NodeDefinition[] = [
         description: "Used for variable resolution. Auto-generated but editable.",
       },
       {
+        name: "input",
+        type: "string",
+        label: "Input Data",
+        optional: true,
+        rows: 4,
+        acceptVariable: true,
+        acceptNodeOutputAsVariable: true,
+        placeholder: "{{previous_node.output}}",
+        description: "Input data to evaluate. Supports variable resolution like {{node_id.output}}",
+      },
+      {
         name: "defaultTarget",
         type: "string",
         label: "Default Target Node",
@@ -243,13 +254,13 @@ export const NODE_DEFS: NodeDefinition[] = [
     outputs: ["true", "false", "default"],
   },
 
-  // Loop Node
+  // ForEach Node (formerly Loop)
   {
-    type: "loopAgentflow",
-    name: "loop",
-    label: "Loop",
+    type: "foreachAgentflow",
+    name: "foreach",
+    label: "ForEach",
     description: "Iterate over arrays",
-    icon: "IterationCw",
+    icon: "ListTree",
     category: "Control",
     color: "#06b6d4", // cyan
     inputs: [
@@ -257,9 +268,20 @@ export const NODE_DEFS: NodeDefinition[] = [
         name: "id",
         type: "string",
         label: "Node ID (auto-generated)",
-        placeholder: "loop_0",
+        placeholder: "foreach_0",
         showInNode: true,
         description: "Used for variable resolution. Auto-generated but editable.",
+      },
+      {
+        name: "input",
+        type: "string",
+        label: "Input Data",
+        optional: true,
+        rows: 4,
+        acceptVariable: true,
+        acceptNodeOutputAsVariable: true,
+        placeholder: "{{previous_node.output}}",
+        description: "Input data containing array to iterate. Supports variable resolution like {{node_id.output}}",
       },
       {
         name: "arrayPath",
@@ -280,6 +302,55 @@ export const NODE_DEFS: NodeDefinition[] = [
       },
     ],
     outputs: ["item", "complete"],
+  },
+
+  // Loop Node (backward jump)
+  {
+    type: "loopAgentflow",
+    name: "loop",
+    label: "Loop",
+    description: "Jump back to a previously executed node",
+    icon: "IterationCw",
+    category: "Control",
+    color: "#8b5cf6", // purple
+    inputs: [
+      {
+        name: "id",
+        type: "string",
+        label: "Node ID (auto-generated)",
+        placeholder: "loop_0",
+        showInNode: true,
+        description: "Used for variable resolution. Auto-generated but editable.",
+      },
+      {
+        name: "input",
+        type: "string",
+        label: "Input Data",
+        optional: true,
+        rows: 4,
+        acceptVariable: true,
+        acceptNodeOutputAsVariable: true,
+        placeholder: "{{previous_node.output}}",
+        description: "Input data to pass to target node. Supports variable resolution like {{node_id.output}}",
+      },
+      {
+        name: "loopBackTo",
+        type: "nodeOptions",
+        label: "Loop Back To (Node ID)",
+        placeholder: "Select node...",
+        showInNode: true,
+        description: "ID of the previously executed node to jump back to",
+      },
+      {
+        name: "maxLoopCount",
+        type: "number",
+        label: "Max Loop Count",
+        default: 5,
+        optional: true,
+        description: "Maximum number of times to loop (default: 5)",
+      },
+    ],
+    outputs: ["output"],
   },
 
   // End Node (Optional - graphs can end at any node)

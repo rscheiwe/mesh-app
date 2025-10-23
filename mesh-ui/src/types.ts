@@ -7,6 +7,7 @@ export type InputDef = {
     | "options"
     | "array"
     | "asyncOptions"
+    | "nodeOptions"
     | "code";
   label: string;
   default?: any;
@@ -32,6 +33,7 @@ export type NodeDefinition = {
     | "agentAgentflow"
     | "toolAgentflow"
     | "conditionAgentflow"
+    | "foreachAgentflow"
     | "loopAgentflow"
     | "endAgentflow"
     | "generic";
