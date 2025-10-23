@@ -198,10 +198,10 @@ export const NODE_DEFS: NodeDefinition[] = [
 
   // Condition Node
   {
-    type: "conditionAgentflow",
+    type: "conditionflow",
     name: "condition",
     label: "Condition",
-    description: "Conditional branching",
+    description: "Unified conditional branching - deterministic or AI-driven",
     icon: "GitBranch",
     category: "Control",
     color: "#ec4899", // pink
@@ -213,6 +213,18 @@ export const NODE_DEFS: NodeDefinition[] = [
         placeholder: "condition_0",
         showInNode: true,
         description: "Used for variable resolution. Auto-generated but editable.",
+      },
+      {
+        name: "conditionRouting",
+        type: "options",
+        label: "Routing Mode",
+        default: "deterministic",
+        showInNode: false,
+        options: [
+          { name: "deterministic", label: "Deterministic (Rules)" },
+          { name: "ai", label: "AI (LLM)" },
+        ],
+        description: "Choose between rule-based routing or LLM-driven classification",
       },
       {
         name: "input",
@@ -231,27 +243,87 @@ export const NODE_DEFS: NodeDefinition[] = [
         label: "Default Target Node",
         optional: true,
         placeholder: "node_id",
-        description: "Node ID to route to if no conditions match",
+        description: "Node ID to route to if no conditions/scenarios match",
       },
+      // Deterministic mode fields
       {
         name: "conditions",
         type: "code",
         label: "Conditions (JSON)",
-        rows: 8,
+        rows: 12,
+        optional: true,
+        show: { conditionRouting: "deterministic" },
         placeholder: `[
   {
-    "name": "success",
-    "target_node": "success_handler"
+    "name": "high_score",
+    "operation": "greater_than",
+    "field": "score",
+    "value": 80,
+    "target_node": "success_path"
   },
   {
-    "name": "failure",
-    "target_node": "error_handler"
+    "name": "contains_error",
+    "operation": "contains",
+    "field": "message",
+    "value": "error",
+    "target_node": "error_path"
   }
 ]`,
-        description: "Array of condition objects with name and target_node",
+        description: "Array of conditions. Operations: equals, not_equal, contains, not_contains, greater_than, less_than, is_empty",
+      },
+      // AI mode fields
+      {
+        name: "model",
+        type: "options",
+        label: "LLM Model",
+        optional: true,
+        show: { conditionRouting: "ai" },
+        options: [
+          { name: "gpt-4", label: "GPT-4" },
+          { name: "gpt-4-turbo", label: "GPT-4 Turbo" },
+          { name: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+          { name: "claude-3-opus-20240229", label: "Claude 3 Opus" },
+        ],
+        description: "LLM model for AI-driven routing",
+      },
+      {
+        name: "instructions",
+        type: "string",
+        label: "Task Instructions",
+        rows: 4,
+        optional: true,
+        show: { conditionRouting: "ai" },
+        placeholder: "Classify the user's request into sales, support, or billing",
+        description: "Natural language description of the classification task",
+      },
+      {
+        name: "scenarios",
+        type: "code",
+        label: "Scenarios (JSON)",
+        rows: 12,
+        optional: true,
+        show: { conditionRouting: "ai" },
+        placeholder: `[
+  {
+    "name": "sales",
+    "description": "Questions about products or purchasing",
+    "target": "sales_handler"
+  },
+  {
+    "name": "support",
+    "description": "Technical issues or help",
+    "target": "support_handler"
+  },
+  {
+    "name": "billing",
+    "description": "Payment or invoice questions",
+    "target": "billing_handler"
+  }
+]`,
+        description: "Array of scenarios for LLM classification. Each must have name, description, and target",
       },
     ],
-    outputs: ["true", "false", "default"],
+    outputs: [], // Dynamic outputs based on conditions or scenarios
   },
 
   // ForEach Node (formerly Loop)

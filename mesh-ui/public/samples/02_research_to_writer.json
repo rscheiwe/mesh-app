@@ -6,7 +6,7 @@
     {
       "id": "START",
       "type": "startAgentflow",
-      "position": { "x": 100, "y": 200 },
+      "position": { "x": 300, "y": 100 },
       "data": {
         "defName": "start",
         "config": {
@@ -17,7 +17,7 @@
     {
       "id": "research_0",
       "type": "agentAgentflow",
-      "position": { "x": 350, "y": 200 },
+      "position": { "x": 300, "y": 300 },
       "data": {
         "defName": "agent",
         "config": {
@@ -30,7 +30,7 @@
     {
       "id": "writer_0",
       "type": "agentAgentflow",
-      "position": { "x": 600, "y": 200 },
+      "position": { "x": 300, "y": 500 },
       "data": {
         "defName": "agent",
         "config": {

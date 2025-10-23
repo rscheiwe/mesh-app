@@ -32,20 +32,20 @@ export const GenericNode = memo(({ data, selected }: NodeProps<NodeInstanceData>
 
   return (
     <Card
-      className={`w-64 border-l-4 shadow-sm transition-shadow ${
+      className={`w-64 border-t-4 shadow-sm transition-shadow ${
         selected ? "ring-2 ring-primary shadow-lg" : ""
       }`}
-      style={{ borderLeftColor: def.color || "#64748b" }}
+      style={{ borderTopColor: def.color || "#64748b" }}
     >
-      {/* Input Handles (Left) */}
+      {/* Input Handles (Top) */}
       {inputHandles.map((inp, idx) => (
         <Handle
           key={inp.name}
           type="target"
-          position={Position.Left}
+          position={Position.Top}
           id={inp.name}
           style={{
-            top: `${((idx + 1) * 100) / (inputHandles.length + 1)}%`,
+            left: `${((idx + 1) * 100) / (inputHandles.length + 1)}%`,
             background: "#64748b",
             width: "8px",
             height: "8px",
@@ -54,15 +54,15 @@ export const GenericNode = memo(({ data, selected }: NodeProps<NodeInstanceData>
         />
       ))}
 
-      {/* Output Handles (Right) */}
+      {/* Output Handles (Bottom) */}
       {def.outputs.map((output, idx) => (
         <Handle
           key={output}
           type="source"
-          position={Position.Right}
+          position={Position.Bottom}
           id={output}
           style={{
-            top: `${((idx + 1) * 100) / (def.outputs.length + 1)}%`,
+            left: `${((idx + 1) * 100) / (def.outputs.length + 1)}%`,
             background: def.color || "#64748b",
             width: "8px",
             height: "8px",

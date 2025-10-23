@@ -32,7 +32,7 @@ export type NodeDefinition = {
     | "llmAgentflow"
     | "agentAgentflow"
     | "toolAgentflow"
-    | "conditionAgentflow"
+    | "conditionflow"
     | "foreachAgentflow"
     | "loopAgentflow"
     | "endAgentflow"

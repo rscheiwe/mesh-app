@@ -6,6 +6,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   NodeTypes,
+  EdgeTypes,
   applyNodeChanges,
   applyEdgeChanges,
 } from "reactflow";
@@ -16,6 +17,7 @@ import { GenericNode } from "./nodes/GenericNode";
 import { LLMNode } from "./nodes/LLMNode";
 import { ConditionNode } from "./nodes/ConditionNode";
 import { ToolNode } from "./nodes/ToolNode";
+import { DeletableEdge } from "./edges/DeletableEdge";
 
 // Define node types mapping (React Flow display names → Components)
 const nodeTypes: NodeTypes = {
@@ -24,10 +26,15 @@ const nodeTypes: NodeTypes = {
   llmAgentflow: LLMNode,
   agentAgentflow: GenericNode,
   toolAgentflow: ToolNode,
-  conditionAgentflow: ConditionNode,
+  conditionflow: ConditionNode,
   foreachAgentflow: GenericNode,
   loopAgentflow: GenericNode,
   endAgentflow: GenericNode,
+};
+
+// Define edge types mapping
+const edgeTypes: EdgeTypes = {
+  default: DeletableEdge,
 };
 
 function CanvasInner() {
@@ -155,6 +162,7 @@ function CanvasInner() {
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         deleteKeyCode="Delete"
       >
