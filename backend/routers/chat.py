@@ -44,35 +44,52 @@ async def chat_stream(request: ExecuteRequest, req: Request):
 
     registry = req.app.state.registry
 
-    # Parse React Flow JSON
-    try:
-        parser = ReactFlowParser(registry)
-        graph = parser.parse(request.flow)
+    async def event_stream():
+        """Stream execution events in AI SDK format.
 
-        # Inject dependencies into special nodes
+        Initialization happens inside the generator so streaming starts immediately.
+        Mesh events are already AI SDK compatible:
+        - Standard events (text-delta, finish, error, etc.) pass through
+        - Mesh-specific events are prefixed with 'data-' for onData callback
+        """
         try:
-            rag_retriever = create_rag_retriever()
+            # Send immediate event to establish connection (improves perceived TTFB)
+            yield f"data: {json.dumps({'type': 'data-preparing', 'data': {'status': 'Parsing graph...'}})}\n\n"
+
+            # Parse React Flow JSON
+            parser = ReactFlowParser(registry)
+            graph = parser.parse(request.flow)
+
+            # Inject dependencies into special nodes
+            try:
+                rag_retriever = create_rag_retriever()
+                for node in graph.nodes.values():
+                    if isinstance(node, RAGNode):
+                        node.set_retriever(rag_retriever)
+            except Exception as e:
+                print(f"Warning: RAG retriever not available: {e}")
+
+            # DB session getter for DataHandlerNode
+            def get_db_session_for_source(source: str):
+                return get_db_session()
+
             for node in graph.nodes.values():
-                if isinstance(node, RAGNode):
-                    node.set_retriever(rag_retriever)
-        except Exception as e:
-            print(f"Warning: RAG retriever not available: {e}")
+                if isinstance(node, DataHandlerNode):
+                    node.set_db_session_getter(get_db_session_for_source)
 
-        # DB session getter for DataHandlerNode
-        def get_db_session_for_source(source: str):
-            return get_db_session()
+            # Load tools from DB and inject into ToolNodes
+            tool_nodes = [n for n in graph.nodes.values() if isinstance(n, ToolNode)]
+            if tool_nodes:
+                yield f"data: {json.dumps({'type': 'data-preparing', 'data': {'status': f'Loading {len(tool_nodes)} tool(s)...'}})}\n\n"
 
-        for node in graph.nodes.values():
-            if isinstance(node, DataHandlerNode):
-                node.set_db_session_getter(get_db_session_for_source)
-
-        # Load tools from DB and inject into ToolNodes
-        session = get_db_session()
-        try:
-            for node in graph.nodes.values():
-                if isinstance(node, ToolNode):
+            session = get_db_session()
+            try:
+                for node in tool_nodes:
                     tool_uuid = node.config.get('toolUuid')
+                    tool_name = node.config.get('name') or node.id
                     if tool_uuid:
+                        yield f"data: {json.dumps({'type': 'data-preparing', 'data': {'status': f'Loading tool: {tool_name}'}})}\n\n"
+
                         from sqlalchemy import text
                         query = text("""
                             SELECT node_uuid, code, imports, name, type
@@ -95,36 +112,22 @@ async def chat_stream(request: ExecuteRequest, req: Request):
                                 print(f"Warning: Failed to load tool '{tool_uuid}': {e}")
                         else:
                             print(f"Warning: Tool {tool_uuid} not found in database")
-        finally:
-            session.close()
+            finally:
+                session.close()
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Failed to parse graph: {str(e)}"
-        )
+            # Create execution context
+            session_id = request.session_id or f"session-{datetime.now().timestamp()}"
+            context = ExecutionContext(
+                graph_id=request.flow.get("id", "react-flow-graph"),
+                session_id=session_id,
+                chat_history=[],
+                variables={},
+                state={},
+            )
 
-    # Create execution context
-    session_id = request.session_id or f"session-{datetime.now().timestamp()}"
-    context = ExecutionContext(
-        graph_id=request.flow.get("id", "react-flow-graph"),
-        session_id=session_id,
-        chat_history=[],
-        variables={},
-        state={},
-    )
+            # Execute with streaming
+            executor = Executor(graph, MemoryBackend())
 
-    # Execute with streaming
-    executor = Executor(graph, MemoryBackend())
-
-    async def event_stream():
-        """Stream execution events in AI SDK format.
-
-        Mesh events are already AI SDK compatible:
-        - Standard events (text-delta, finish, error, etc.) pass through
-        - Mesh-specific events are prefixed with 'data-' for onData callback
-        """
-        try:
             has_sent_finish = False
 
             async for event in executor.execute(request.input, context):
