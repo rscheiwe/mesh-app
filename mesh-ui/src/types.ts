@@ -7,6 +7,7 @@ export type InputDef = {
     | "options"
     | "array"
     | "asyncOptions"
+    | "multiAsyncSelect"
     | "nodeOptions"
     | "code";
   label: string;
@@ -16,7 +17,7 @@ export type InputDef = {
   placeholder?: string;
   description?: string;
   options?: { name: string; label: string; description?: string }[];
-  dataSource?: "agents" | "tools"; // For asyncOptions: where to fetch data from
+  dataSource?: "agents" | "tools"; // For asyncOptions/multiAsyncSelect: where to fetch data from
   array?: InputDef[];
   show?: Record<string, any>;
   acceptVariable?: boolean;
@@ -24,6 +25,7 @@ export type InputDef = {
   loadConfig?: boolean;
   loadMethod?: string;
   showInNode?: boolean; // renders a summary field inside the node body
+  fetchUrl?: string; // Custom fetch URL for asyncOptions
 };
 
 export type NodeDefinition = {

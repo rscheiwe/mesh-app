@@ -7,12 +7,13 @@
 
 // In development, use relative URLs (proxied by Vite)
 // In production, use the full URL from env
-const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+// const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+const API_URL = "http://localhost:8000";
 
 export interface Agent {
   id: string;
   name: string;
-  type: 'vel' | 'openai' | 'custom';
+  type: "vel" | "openai" | "custom";
   description?: string;
 }
 
@@ -20,6 +21,20 @@ export interface Tool {
   id: string;
   name: string;
   description?: string;
+  code?: string;
+  imports?: any;
+}
+
+export interface CustomNode {
+  node_uuid: string;
+  type: string;
+  name: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  category?: string;
+  inputs: any[];
+  outputs: any[];
 }
 
 export interface ExecutionEvent {
@@ -67,6 +82,19 @@ export async function fetchTools(): Promise<Tool[]> {
 }
 
 /**
+ * Fetch custom nodes from database
+ */
+export async function fetchCustomNodes(): Promise<CustomNode[]> {
+  const response = await fetch(`${API_URL}/api/nodes/custom`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch custom nodes: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Execute a graph with streaming
  */
 export async function executeGraph(
@@ -74,9 +102,9 @@ export async function executeGraph(
   onEvent: (event: ExecutionEvent) => void
 ): Promise<void> {
   const response = await fetch(`${API_URL}/api/execution/execute`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       flow: params.flow,
@@ -92,7 +120,7 @@ export async function executeGraph(
   // Parse SSE stream
   const reader = response.body?.getReader();
   if (!reader) {
-    throw new Error('Response body is not readable');
+    throw new Error("Response body is not readable");
   }
 
   const decoder = new TextDecoder();
@@ -103,15 +131,15 @@ export async function executeGraph(
     if (done) break;
 
     const chunk = decoder.decode(value);
-    const lines = chunk.split('\n');
+    const lines = chunk.split("\n");
 
     for (const line of lines) {
-      if (line.startsWith('data: ')) {
+      if (line.startsWith("data: ")) {
         try {
           const event = JSON.parse(line.slice(6));
           onEvent(event);
         } catch (error) {
-          console.error('Failed to parse event:', error);
+          console.error("Failed to parse event:", error);
         }
       }
     }
@@ -125,9 +153,9 @@ export async function executeGraphSync(
   params: ExecuteGraphParams
 ): Promise<any> {
   const response = await fetch(`${API_URL}/api/execution/execute-sync`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       flow: params.flow,

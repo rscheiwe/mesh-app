@@ -23,7 +23,7 @@
         "config": {
           "id": "writer_0",
           "agent": "writer_agent",
-          "systemPrompt": "You are a creative writer. Write engaging content based on: {{$input}}"
+          "systemPrompt": "You are a creative writer. Write 50 engaging words based on: {{$input}}"
         }
       }
     }

@@ -7,11 +7,11 @@ python-multipart==0.0.20
 pydantic==2.10.5
 pydantic-settings==2.7.1
 
-# Mesh orchestration framework (install from GitHub)
-git+https://github.com/rscheiwe/mesh.git@main
+# Mesh orchestration framework (install from local)
+-e /Users/richard.s/mesh
 
 # Vel agent framework (required for Mesh agents)
-git+https://github.com/rscheiwe/vel.git@main
+-e /Users/richard.s/vel
 
 # Agent SDKs (optional - install what you need)
 # openai-agents-sdk  # Uncomment if using OpenAI Agents SDK

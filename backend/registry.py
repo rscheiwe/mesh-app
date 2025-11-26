@@ -1,12 +1,23 @@
-"""Agent and Tool Registry Configuration
+"""Agent Templates Registry
 
-This module creates and populates the NodeRegistry with all your agents
-and tools. Agents are instantiated once at startup and reused across requests.
+This module creates and populates the NodeRegistry with pre-configured agent templates.
+These templates provide quick-start agents that users can select in the UI.
 
-Add new agents:
+Users can also:
+- Create inline agents via React Flow (provider/modelName/tools config)
+- Attach tools dynamically:
+  * Via inline tools array in agent config
+  * Via standalone ToolNode loaded from database
+- Configure agents at runtime without using templates
+
+Add new agent templates:
     1. Create agent config in backend/agents/my_agent.py
     2. Import and register here
     3. Frontend will automatically see it via GET /api/agents
+
+Note: Tools are NO LONGER registered here. Instead:
+- Agent tools: Configured on agent creation or via inline tools array
+- Standalone tools: Loaded from DB when ToolNode is used (see execution.py)
 """
 
 from mesh import NodeRegistry
@@ -16,15 +27,18 @@ from backend.agents import (
     create_qa_agent,
     create_writer_agent,
 )
-from backend.tools import get_all_tools
-from backend.config import settings
 
 
 def create_registry() -> NodeRegistry:
-    """Create and populate registry with all agents and tools.
+    """Create registry with pre-configured agent templates.
+
+    This registry stores reusable agent templates only. Tools are handled separately:
+    - Agent-attached tools: Part of VelAgent configuration
+    - Standalone tools: Loaded from DB on-demand (see execution.py)
+    - Inline tools: Defined in React Flow JSON, parsed by ReactFlowParser
 
     Returns:
-        NodeRegistry: Configured registry with all agents and tools
+        NodeRegistry: Configured registry with agent templates
     """
     registry = NodeRegistry()
 
@@ -42,45 +56,38 @@ def create_registry() -> NodeRegistry:
     except Exception as e:
         print(f"  ⚠️  Could not check Vel providers: {e}")
 
-    # Register agents
-    print("📝 Registering agents...")
+    # Register agent templates
+    print("📝 Registering agent templates...")
 
     try:
         research_agent = create_research_agent()
         registry.register_agent("research_agent", research_agent)
-        print("  ✓ research_agent")
+        print("  ✓ research_agent template")
     except Exception as e:
         print(f"  ⚠️  Failed to register research_agent: {e}")
 
     try:
         coding_agent = create_coding_agent()
         registry.register_agent("coding_agent", coding_agent)
-        print("  ✓ coding_agent")
+        print("  ✓ coding_agent template")
     except Exception as e:
         print(f"  ⚠️  Failed to register coding_agent: {e}")
 
     try:
         qa_agent = create_qa_agent()
         registry.register_agent("qa_agent", qa_agent)
-        print("  ✓ qa_agent")
+        print("  ✓ qa_agent template")
     except Exception as e:
         print(f"  ⚠️  Failed to register qa_agent: {e}")
 
     try:
         writer_agent = create_writer_agent()
         registry.register_agent("writer_agent", writer_agent)
-        print("  ✓ writer_agent")
+        print("  ✓ writer_agent template")
     except Exception as e:
         print(f"  ⚠️  Failed to register writer_agent: {e}")
 
-    # Register tools
-    print("🔧 Registering tools...")
-    tools = get_all_tools()
-
-    for tool_name, tool_fn in tools.items():
-        registry.register_tool(tool_name, tool_fn)
-        print(f"  ✓ {tool_name}")
-
-    print(f"\n✅ Registry ready: {len(registry.list_agents())} agents, {len(registry.list_tools())} tools\n")
+    print(f"\n✅ Registry ready: {len(registry.list_agents())} agent templates")
+    print("   Tools are handled dynamically (inline or DB-loaded)\n")
 
     return registry

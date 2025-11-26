@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useGraphStore } from "@/store/graph";
+import { useBackend } from "@/contexts/BackendContext";
 import { Play, StopCircle, AlertCircle } from "lucide-react";
 import { executeGraph } from "@/lib/api";
 
@@ -13,6 +14,54 @@ export function Runner() {
   const [error, setError] = useState<string | null>(null);
   const toFlowJson = useGraphStore((state) => state.toFlowJson);
   const nodes = useGraphStore((state) => state.nodes);
+  const backend = useBackend();
+
+  // Helper to transform tool UUIDs to inline tool definitions
+  const transformToolsToInline = (flowJson: any) => {
+    // Clone flow JSON
+    const transformed = JSON.parse(JSON.stringify(flowJson));
+
+    // Transform each agent node's tools array
+    transformed.nodes = transformed.nodes.map((node: any) => {
+      // Only process agent nodes
+      if (node.type === 'agentAgentflow' && node.data.inputs.tools) {
+        const toolIds = node.data.inputs.tools;
+
+        // Transform tool IDs to inline tool definitions
+        const inlineTools = toolIds
+          .map((toolId: string) => {
+            const tool = backend.tools.find(t => t.id === toolId);
+            if (!tool) {
+              console.warn(`Tool ${toolId} not found in backend tools`);
+              return null;
+            }
+
+            return {
+              code: tool.code,
+              name: tool.name,
+              description: tool.description,
+            };
+          })
+          .filter(Boolean); // Remove nulls
+
+        // Replace tools array with inline definitions
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            inputs: {
+              ...node.data.inputs,
+              tools: inlineTools,
+            },
+          },
+        };
+      }
+
+      return node;
+    });
+
+    return transformed;
+  };
 
   const handleRun = async () => {
     // Validate we have nodes
@@ -34,11 +83,14 @@ export function Runner() {
     try {
       const flowJson = toFlowJson();
 
-      console.log("Executing graph:", flowJson);
+      // Transform tool UUIDs to inline tool definitions
+      const transformedFlow = transformToolsToInline(flowJson);
+
+      console.log("Executing graph:", transformedFlow);
 
       await executeGraph(
         {
-          flow: flowJson,
+          flow: transformedFlow,
           input: input.trim(),
           session_id: `session-${Date.now()}`,
         },

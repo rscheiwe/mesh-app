@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGraphStore } from "@/store/graph";
 import { NODE_DEF_MAP } from "@/registry";
@@ -15,6 +16,55 @@ export function Inspector({ isCollapsed = false, onToggle }: InspectorProps) {
   const edges = useGraphStore((state) => state.edges);
   const updateNode = useGraphStore((state) => state.updateNode);
   const deleteNode = useGraphStore((state) => state.deleteNode);
+
+  // Watch for DataHandler selection changes and populate fields
+  useEffect(() => {
+    if (!selectedNode || selectedNode.data.defName !== "data_handler") return;
+
+    const dataHandlerUuid = selectedNode.data.config?.dataHandlerUuid;
+    if (!dataHandlerUuid) return;
+
+    // Fetch the selected DataHandler details
+    const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+
+    fetch(`${API_URL}/api/nodes/data-handlers`)
+      .then(res => res.json())
+      .then(handlers => {
+        const selected = handlers.find((h: any) => h.name === dataHandlerUuid);
+        if (!selected) return;
+
+        // Extract query and db_source from inputs
+        const queryInput = selected.inputs?.find((inp: any) => inp.name === 'query');
+        const dbSourceInput = selected.inputs?.find((inp: any) => inp.name === 'db_source');
+        const paramsInput = selected.inputs?.find((inp: any) => inp.name === 'params');
+
+        const query = queryInput?.default || '';
+        const dbSource = dbSourceInput?.default || 'postgres';
+
+        // Parse params default
+        let defaultParams = {};
+        if (paramsInput?.default) {
+          try {
+            defaultParams = typeof paramsInput.default === 'string'
+              ? JSON.parse(paramsInput.default)
+              : paramsInput.default;
+          } catch (e) {
+            console.error('Failed to parse default params:', e);
+          }
+        }
+
+        // Update node config
+        updateNode(selectedNode.id, {
+          config: {
+            ...selectedNode.data.config,
+            query,
+            dbSource,
+            params: Object.keys(defaultParams).length > 0 ? JSON.stringify(defaultParams, null, 2) : '',
+          },
+        });
+      })
+      .catch(err => console.error('Failed to load DataHandler details:', err));
+  }, [selectedNode?.data.config?.dataHandlerUuid, selectedNode?.id, updateNode]);
 
   if (isCollapsed) {
     return (

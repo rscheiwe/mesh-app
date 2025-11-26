@@ -16,10 +16,12 @@ class AgentInfo(BaseModel):
 
 
 class ToolInfo(BaseModel):
-    """Information about a registered tool."""
-    id: str
+    """Information about a tool from database."""
+    id: str  # node_uuid
     name: str
     description: Optional[str] = None
+    code: Optional[str] = None  # Tool function code
+    imports: Optional[Any] = None  # Can be JSON array or string
 
 
 class ExecutionEvent(BaseModel):

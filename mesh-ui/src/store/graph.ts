@@ -124,16 +124,22 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   toFlowJson: () => {
     const state = get();
     return {
-      nodes: state.nodes.map((node) => ({
-        id: node.id,
-        type: node.type || "generic",
-        position: node.position,
-        data: {
-          name: node.type || "generic",
-          label: node.data.defName || node.type,
-          inputs: node.data.config || {},
-        },
-      })),
+      nodes: state.nodes.map((node) => {
+        const inputs = node.data.config || {};
+
+        // Transform tools array from UUIDs to inline tool definitions
+        // This will be processed by prepareFlowForExecution() in the runner
+        return {
+          id: node.id,
+          type: node.type || "generic",
+          position: node.position,
+          data: {
+            name: node.type || "generic",
+            label: node.data.defName || node.type,
+            inputs: inputs,
+          },
+        };
+      }),
       edges: state.edges.map((edge) => ({
         id: edge.id,
         source: edge.source,

@@ -9,8 +9,12 @@ import json
 from datetime import datetime
 
 from mesh import ReactFlowParser, Executor, ExecutionContext, MemoryBackend
+from mesh.nodes import RAGNode, DataHandlerNode, ToolNode
 from backend.models.requests import ExecuteRequest, ExecuteSyncRequest
 from backend.models.responses import ExecutionResult
+from backend.rag_retriever_temp import create_rag_retriever
+from backend.database import get_db_session
+from backend.loaders.node_loader import load_node_from_db, execute_tool_code
 
 
 router = APIRouter()
@@ -39,6 +43,66 @@ async def execute_graph(request: ExecuteRequest, req: Request):
     try:
         parser = ReactFlowParser(registry)
         graph = parser.parse(request.flow)
+
+        # Inject dependencies into special nodes
+        try:
+            # RAG retriever for RAGNode
+            rag_retriever = create_rag_retriever()  # Uses DATABASE_URL and OPENAI_API_KEY from .env
+            for node in graph.nodes.values():
+                if isinstance(node, RAGNode):
+                    node.set_retriever(rag_retriever)
+        except Exception as e:
+            # Log but don't fail if RAG not configured
+            print(f"Warning: RAG retriever not available: {e}")
+
+        # DB session getter for DataHandlerNode
+        def get_db_session_for_source(source: str):
+            """Get database session for given source."""
+            # For now, all sources use the same connection
+            # In production, map to different databases
+            return get_db_session()
+
+        for node in graph.nodes.values():
+            if isinstance(node, DataHandlerNode):
+                node.set_db_session_getter(get_db_session_for_source)
+
+        # Load tools from DB and inject into ToolNodes
+        # This is where mesh-app backend loads DB-backed tools
+        session = get_db_session()
+        try:
+            for node in graph.nodes.values():
+                if isinstance(node, ToolNode):
+                    # Check if node has toolUuid in config (needs DB loading)
+                    tool_uuid = node.config.get('toolUuid')
+                    if tool_uuid:
+                        # Load tool from database
+                        from sqlalchemy import text
+                        query = text("""
+                            SELECT node_uuid, code, imports, name, type
+                            FROM mosaic_agent_tool_nodes
+                            WHERE node_uuid = :tool_uuid AND active = true
+                        """)
+                        result = session.execute(query, {"tool_uuid": tool_uuid})
+                        record = result.fetchone()
+
+                        if record:
+                            record_dict = dict(record._mapping)
+                            try:
+                                # Use helper to execute tool code and extract function
+                                tool_fn = execute_tool_code(
+                                    code=record_dict.get('code', ''),
+                                    imports=record_dict.get('imports', '[]'),
+                                    func_name=record_dict.get('name')
+                                )
+                                # Inject the tool function
+                                node.set_tool_function(tool_fn)
+                            except Exception as e:
+                                print(f"Warning: Failed to load tool '{tool_uuid}': {e}")
+                        else:
+                            print(f"Warning: Tool {tool_uuid} not found in database")
+        finally:
+            session.close()
+
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -73,8 +137,8 @@ async def execute_graph(request: ExecuteRequest, req: Request):
 
         except Exception as e:
             error_event = {
-                "type": "execution_error",
-                "error": str(e),
+                "type": "error",
+                "errorText": str(e),
                 "timestamp": datetime.now().isoformat(),
             }
             yield f"data: {json.dumps(error_event)}\n\n"
@@ -109,10 +173,72 @@ async def execute_graph_sync(request: ExecuteSyncRequest, req: Request):
 
     registry = req.app.state.registry
 
+    # Inject DB session getter into registry for on-demand tool loading
+    registry.db_session_getter = get_db_session
+
     try:
         # Parse and execute
         parser = ReactFlowParser(registry)
         graph = parser.parse(request.flow)
+
+        # Inject dependencies into special nodes
+        try:
+            # RAG retriever for RAGNode
+            rag_retriever = create_rag_retriever()  # Uses DATABASE_URL and OPENAI_API_KEY from .env
+            for node in graph.nodes.values():
+                if isinstance(node, RAGNode):
+                    node.set_retriever(rag_retriever)
+        except Exception as e:
+            # Log but don't fail if RAG not configured
+            print(f"Warning: RAG retriever not available: {e}")
+
+        # DB session getter for DataHandlerNode
+        def get_db_session_for_source(source: str):
+            """Get database session for given source."""
+            # For now, all sources use the same connection
+            # In production, map to different databases
+            return get_db_session()
+
+        for node in graph.nodes.values():
+            if isinstance(node, DataHandlerNode):
+                node.set_db_session_getter(get_db_session_for_source)
+
+        # Load tools from DB and inject into ToolNodes
+        # This is where mesh-app backend loads DB-backed tools
+        session = get_db_session()
+        try:
+            for node in graph.nodes.values():
+                if isinstance(node, ToolNode):
+                    # Check if node has toolUuid in config (needs DB loading)
+                    tool_uuid = node.config.get('toolUuid')
+                    if tool_uuid:
+                        # Load tool from database
+                        from sqlalchemy import text
+                        query = text("""
+                            SELECT node_uuid, code, imports, name, type
+                            FROM mosaic_agent_tool_nodes
+                            WHERE node_uuid = :tool_uuid AND active = true
+                        """)
+                        result = session.execute(query, {"tool_uuid": tool_uuid})
+                        record = result.fetchone()
+
+                        if record:
+                            record_dict = dict(record._mapping)
+                            try:
+                                # Use helper to execute tool code and extract function
+                                tool_fn = execute_tool_code(
+                                    code=record_dict.get('code', ''),
+                                    imports=record_dict.get('imports', '[]'),
+                                    func_name=record_dict.get('name')
+                                )
+                                # Inject the tool function
+                                node.set_tool_function(tool_fn)
+                            except Exception as e:
+                                print(f"Warning: Failed to load tool '{tool_uuid}': {e}")
+                        else:
+                            print(f"Warning: Tool {tool_uuid} not found in database")
+        finally:
+            session.close()
 
         session_id = request.session_id or f"session-{datetime.now().timestamp()}"
         context = ExecutionContext(

@@ -26,6 +26,8 @@ const nodeTypes: NodeTypes = {
   llmAgentflow: LLMNode,
   agentAgentflow: GenericNode,
   toolAgentflow: ToolNode,
+  ragAgentflow: GenericNode,
+  dataHandlerAgentflow: GenericNode,
   conditionflow: ConditionNode,
   foreachAgentflow: GenericNode,
   loopAgentflow: GenericNode,

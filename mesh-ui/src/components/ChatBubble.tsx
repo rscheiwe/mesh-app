@@ -2,10 +2,47 @@ import { useState } from "react";
 import { MessageCircle, X, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBot } from "./ChatBot";
+import ChatBubbleWidget from "./ChatBubbleWidget";
+import ChatBubbleMeshChat from "./ChatBubbleMeshChat";
 
 export function ChatBubble() {
   const [isOpen, setIsOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Toggle between old and new implementation
+  // Set to true to use the new ChatBubbleWidget
+  const USE_NEW_WIDGET = true;
+
+  if (USE_NEW_WIDGET) {
+    return (
+      <ChatBubbleWidget
+        config={{
+          theme: {
+            accentColor: "#004b7a",
+            button: {
+              right: 24,
+              bottom: 24,
+              size: 60,
+            },
+            window: {
+              title: "Mesh Chat",
+              width: 400,
+              height: 650,
+            },
+            tooltip: {
+              show: true,
+              message: "Chat with your Mesh graph! 🤖",
+            },
+          },
+          footer: {
+            text: "Powered by Mesh",
+          },
+        }}
+      >
+        <ChatBubbleMeshChat />
+      </ChatBubbleWidget>
+    );
+  }
 
   return (
     <>

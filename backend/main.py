@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from backend.registry import create_registry
-from backend.routers import agents, tools, execution, health
+from backend.routers import agents, tools, execution, health, nodes, chat
 from backend.middleware.error_handler import add_error_handlers
 from backend.config import settings
 
@@ -62,6 +62,8 @@ app.include_router(health.router, tags=["health"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
 app.include_router(execution.router, prefix="/api/execution", tags=["execution"])
+app.include_router(nodes.router, prefix="/api/nodes", tags=["nodes"])
+app.include_router(chat.router, prefix="/api", tags=["chat"])
 
 
 @app.get("/")

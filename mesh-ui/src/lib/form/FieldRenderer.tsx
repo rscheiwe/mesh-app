@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,11 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
 
   // Get backend data for async options
   const backend = useBackend();
+
+  // State for custom fetch URL options
+  const [customOptions, setCustomOptions] = useState<{ name: string; label: string }[]>([]);
+  const [customLoading, setCustomLoading] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
 
   switch (input.type) {
     case "string":
@@ -153,7 +159,35 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
       let isLoading = false;
       let error: string | null = null;
 
-      if (input.dataSource === "agents") {
+      // Support custom fetch URL
+      useEffect(() => {
+        if (input.fetchUrl) {
+          setCustomLoading(true);
+          setCustomError(null);
+
+          const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+
+          fetch(`${API_URL}${input.fetchUrl}`)
+            .then(res => {
+              if (!res.ok) throw new Error(`Failed to fetch options: ${res.statusText}`);
+              return res.json();
+            })
+            .then(data => {
+              setCustomOptions(data);
+              setCustomLoading(false);
+            })
+            .catch(err => {
+              setCustomError(err.message);
+              setCustomLoading(false);
+            });
+        }
+      }, [input.fetchUrl]);
+
+      if (input.fetchUrl) {
+        dynamicOptions = customOptions;
+        isLoading = customLoading;
+        error = customError;
+      } else if (input.dataSource === "agents") {
         dynamicOptions = backend.agents.map((agent) => ({
           name: agent.id,
           label: agent.name,
@@ -208,6 +242,101 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
                   {opt.label}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+
+    case "multiAsyncSelect": {
+      // Multi-select for tools/agents from backend
+      let dynamicOptions: { name: string; label: string }[] = [];
+      let isLoading = false;
+      let error: string | null = null;
+
+      if (input.dataSource === "tools") {
+        dynamicOptions = backend.tools.map((tool) => ({
+          name: tool.id,
+          label: tool.name,
+        }));
+        isLoading = backend.toolsLoading;
+        error = backend.toolsError;
+      }
+
+      // Parse current value (array of tool IDs)
+      const selectedTools = Array.isArray(currentValue) ? currentValue : [];
+
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={input.name}>
+            {input.label}
+            {input.optional && (
+              <span className="text-muted-foreground ml-1">(optional)</span>
+            )}
+          </Label>
+          {input.description && (
+            <p className="text-xs text-muted-foreground">{input.description}</p>
+          )}
+          {error && (
+            <p className="text-xs text-destructive">{error}</p>
+          )}
+
+          {/* Selected tools display */}
+          {selectedTools.length > 0 && (
+            <div className="space-y-1 p-2 bg-muted/50 rounded-md">
+              {selectedTools.map((toolId: string) => {
+                const tool = dynamicOptions.find(opt => opt.name === toolId);
+                return (
+                  <div key={toolId} className="flex items-center justify-between text-sm">
+                    <span>{tool?.label || toolId}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        onChange(selectedTools.filter((id: string) => id !== toolId));
+                      }}
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Tool selector */}
+          <Select
+            value=""
+            onValueChange={(toolId) => {
+              if (!selectedTools.includes(toolId)) {
+                onChange([...selectedTools, toolId]);
+              }
+            }}
+            disabled={isLoading || !!error}
+          >
+            <SelectTrigger id={input.name}>
+              <SelectValue placeholder={
+                isLoading
+                  ? "Loading tools..."
+                  : error
+                    ? "Error loading tools"
+                    : "Add tool..."
+              } />
+            </SelectTrigger>
+            <SelectContent>
+              {dynamicOptions.length === 0 && !isLoading && (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                  No tools available
+                </div>
+              )}
+              {dynamicOptions
+                .filter(opt => !selectedTools.includes(opt.name))
+                .map((opt) => (
+                  <SelectItem key={opt.name} value={opt.name}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
