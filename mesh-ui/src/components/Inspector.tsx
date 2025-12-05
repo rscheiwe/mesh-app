@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGraphStore } from "@/store/graph";
 import { NODE_DEF_MAP } from "@/registry";
 import { FieldRenderer } from "@/lib/form/FieldRenderer";
 import { Button } from "@/components/ui/button";
 import { Trash2, Settings } from "lucide-react";
+import { AvailableVariables } from "@/components/AvailableVariables";
+import { ToolArgsReference } from "@/components/ToolArgsReference";
+import { useBackend } from "@/contexts/BackendContext";
 
 interface InspectorProps {
   isCollapsed?: boolean;
@@ -17,54 +20,129 @@ export function Inspector({ isCollapsed = false, onToggle }: InspectorProps) {
   const updateNode = useGraphStore((state) => state.updateNode);
   const deleteNode = useGraphStore((state) => state.deleteNode);
 
-  // Watch for DataHandler selection changes and populate fields
+  // Get data from context (loaded once at app startup)
+  const { getToolByUuid, getDataHandlerByUuid } = useBackend();
+
+  // Get tool metadata from context when a tool is selected
+  const toolMetadata = useMemo(() => {
+    if (!selectedNode || selectedNode.data.defName !== "tool") {
+      return null;
+    }
+
+    const toolUuid = selectedNode.data.config?.toolUuid;
+    if (!toolUuid) {
+      return null;
+    }
+
+    const tool = getToolByUuid(toolUuid);
+    if (!tool) {
+      return null;
+    }
+
+    return {
+      args: (tool.inputs || []).map((inp) => ({
+        name: inp.name,
+        type: inp.type || 'any',
+        optional: inp.optional || false,
+        description: inp.description || '',
+        default: inp.default,
+        options: inp.options,
+      })),
+      outputs: tool.outputs || ['output'],
+      toolName: tool.label,
+    };
+  }, [selectedNode?.data.defName, selectedNode?.data.config?.toolUuid, getToolByUuid]);
+
+  // Update node config when tool is selected (for bindings default)
+  useEffect(() => {
+    if (!selectedNode || selectedNode.data.defName !== "tool" || !toolMetadata) {
+      return;
+    }
+
+    const toolUuid = selectedNode.data.config?.toolUuid;
+    if (!toolUuid) return;
+
+    // Only update if toolOutputs not already set (avoid infinite loop)
+    if (selectedNode.data.config?.toolOutputs) {
+      return;
+    }
+
+    // Build default bindings JSON from args
+    const defaultBindings: Record<string, any> = {};
+    toolMetadata.args.forEach((arg) => {
+      defaultBindings[arg.name] = arg.default !== undefined ? arg.default : null;
+    });
+
+    // Update node config with tool metadata and default bindings
+    updateNode(selectedNode.id, {
+      config: {
+        ...selectedNode.data.config,
+        toolArgs: toolMetadata.args,
+        toolOutputs: toolMetadata.outputs,
+        toolName: toolMetadata.toolName,
+        // Only set bindings if not already set
+        bindings: selectedNode.data.config?.bindings || JSON.stringify(defaultBindings, null, 2),
+      },
+    });
+  }, [selectedNode?.id, selectedNode?.data.config?.toolUuid, toolMetadata, updateNode]);
+
+  // Watch for DataHandler selection changes and populate fields (using context)
   useEffect(() => {
     if (!selectedNode || selectedNode.data.defName !== "data_handler") return;
 
     const dataHandlerUuid = selectedNode.data.config?.dataHandlerUuid;
     if (!dataHandlerUuid) return;
 
-    // Fetch the selected DataHandler details
-    const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+    // Skip if already populated
+    if (selectedNode.data.config?.query) return;
 
-    fetch(`${API_URL}/api/nodes/data-handlers`)
-      .then(res => res.json())
-      .then(handlers => {
-        const selected = handlers.find((h: any) => h.name === dataHandlerUuid);
-        if (!selected) return;
+    const handler = getDataHandlerByUuid(dataHandlerUuid);
+    if (!handler) return;
 
-        // Extract query and db_source from inputs
-        const queryInput = selected.inputs?.find((inp: any) => inp.name === 'query');
-        const dbSourceInput = selected.inputs?.find((inp: any) => inp.name === 'db_source');
-        const paramsInput = selected.inputs?.find((inp: any) => inp.name === 'params');
+    // Extract query and db_source from inputs
+    const queryInput = handler.inputs?.find((inp) => inp.name === 'query');
+    const dbSourceInput = handler.inputs?.find((inp) => inp.name === 'db_source');
+    const paramsInput = handler.inputs?.find((inp) => inp.name === 'params');
 
-        const query = queryInput?.default || '';
-        const dbSource = dbSourceInput?.default || 'postgres';
+    const query = queryInput?.default || '';
+    const dbSource = dbSourceInput?.default || 'postgres';
 
-        // Parse params default
-        let defaultParams = {};
-        if (paramsInput?.default) {
-          try {
-            defaultParams = typeof paramsInput.default === 'string'
-              ? JSON.parse(paramsInput.default)
-              : paramsInput.default;
-          } catch (e) {
-            console.error('Failed to parse default params:', e);
-          }
-        }
+    // Parse params default
+    let defaultParams = {};
+    if (paramsInput?.default) {
+      try {
+        defaultParams = typeof paramsInput.default === 'string'
+          ? JSON.parse(paramsInput.default)
+          : paramsInput.default;
+      } catch (e) {
+        console.error('Failed to parse default params:', e);
+      }
+    }
 
-        // Update node config
-        updateNode(selectedNode.id, {
-          config: {
-            ...selectedNode.data.config,
-            query,
-            dbSource,
-            params: Object.keys(defaultParams).length > 0 ? JSON.stringify(defaultParams, null, 2) : '',
-          },
-        });
-      })
-      .catch(err => console.error('Failed to load DataHandler details:', err));
-  }, [selectedNode?.data.config?.dataHandlerUuid, selectedNode?.id, updateNode]);
+    // Update node config
+    updateNode(selectedNode.id, {
+      config: {
+        ...selectedNode.data.config,
+        query,
+        dbSource,
+        params: Object.keys(defaultParams).length > 0 ? JSON.stringify(defaultParams, null, 2) : '',
+      },
+    });
+  }, [selectedNode?.data.config?.dataHandlerUuid, selectedNode?.id, getDataHandlerByUuid, updateNode]);
+
+  // Check if this node type should show Available Variables
+  // Must be called before any early returns to follow rules of hooks
+  const shouldShowVariables = useMemo(() => {
+    const defName = selectedNode?.data?.defName;
+    const typesWithVariables = [
+      "llm",
+      "agent",
+      "agent_flow",
+      "tool",
+      "condition",
+    ];
+    return typesWithVariables.includes(defName);
+  }, [selectedNode?.data?.defName]);
 
   if (isCollapsed) {
     return (
@@ -169,6 +247,21 @@ export function Inspector({ isCollapsed = false, onToggle }: InspectorProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Available Variables from upstream nodes */}
+          {shouldShowVariables && (
+            <AvailableVariables currentNodeId={selectedNode.id} />
+          )}
+
+          {/* Tool Parameters Reference - show for Tool nodes when a tool is selected */}
+          {selectedNode.data.defName === "tool" && toolMetadata && (
+            <ToolArgsReference
+              args={toolMetadata.args}
+              outputs={toolMetadata.outputs}
+              toolName={toolMetadata.toolName}
+              nodeId={selectedNode.data.config?.id || selectedNode.id}
+            />
+          )}
+
           {def.inputs
             .filter(shouldShowField)
             .map((input) => (

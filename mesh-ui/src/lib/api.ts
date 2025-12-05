@@ -25,6 +25,32 @@ export interface Tool {
   imports?: any;
 }
 
+// Full tool node metadata from /api/nodes/tools
+export interface ToolNode {
+  name: string; // UUID
+  label: string;
+  description?: string;
+  inputs?: ToolInput[];
+  outputs?: string[];
+}
+
+export interface ToolInput {
+  name: string;
+  type?: string;
+  optional?: boolean;
+  description?: string;
+  default?: any;
+  options?: { name: string; label: string }[];
+}
+
+// Agent flow metadata from /api/nodes/agent-flows
+export interface AgentFlow {
+  name: string; // UUID
+  label: string;
+  description?: string;
+  version?: number;
+}
+
 export interface CustomNode {
   node_uuid: string;
   type: string;
@@ -68,7 +94,7 @@ export async function fetchAgents(): Promise<Agent[]> {
 }
 
 /**
- * Fetch available tools from backend
+ * Fetch available tools from backend (basic info)
  */
 export async function fetchTools(): Promise<Tool[]> {
   const response = await fetch(`${API_URL}/api/tools`);
@@ -79,6 +105,46 @@ export async function fetchTools(): Promise<Tool[]> {
 
   const data = await response.json();
   return data.tools;
+}
+
+/**
+ * Fetch tool nodes with full metadata (inputs, outputs)
+ * Used for tool selection dropdowns and parameter display
+ */
+export async function fetchToolNodes(): Promise<ToolNode[]> {
+  const response = await fetch(`${API_URL}/api/nodes/tools`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tool nodes: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch agent flows for subflow selection
+ */
+export async function fetchAgentFlows(): Promise<AgentFlow[]> {
+  const response = await fetch(`${API_URL}/api/nodes/agent-flows`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch agent flows: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch data handlers for data handler selection
+ */
+export async function fetchDataHandlers(): Promise<ToolNode[]> {
+  const response = await fetch(`${API_URL}/api/nodes/data-handlers`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch data handlers: ${response.statusText}`);
+  }
+
+  return response.json();
 }
 
 /**

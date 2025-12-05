@@ -275,6 +275,84 @@ export const NODE_DEFS: NodeDefinition[] = [
     outputs: ["content"],
   },
 
+  // Agent Flow Node - Execute a saved agent flow as a subflow
+  {
+    type: "agentFlowAgentflow",
+    name: "agent_flow",
+    label: "Agent Flow",
+    description: "Execute a saved agent flow as a reusable subflow",
+    icon: "Workflow",
+    category: "Agents",
+    color: "#7c3aed", // violet (distinct from agent purple)
+    inputs: [
+      {
+        name: "id",
+        type: "string",
+        label: "Node ID (auto-generated)",
+        placeholder: "agent_flow_0",
+        showInNode: true,
+        description: "Used for variable resolution (e.g., {{agent_flow_0.output}}). Auto-generated but editable.",
+      },
+      {
+        name: "flowUuid",
+        type: "asyncOptions",
+        label: "Select Agent Flow",
+        placeholder: "Choose a saved flow...",
+        showInNode: true,
+        description: "Select a saved agent flow from the database to execute",
+        dataSource: "agentFlows",
+      },
+      {
+        name: "flowVersion",
+        type: "options",
+        label: "Flow Version",
+        default: "latest",
+        optional: true,
+        showInNode: false,
+        options: [
+          { name: "latest", label: "Latest Version" },
+          { name: "specific", label: "Specific Version" },
+        ],
+        description: "Use the latest version or a specific version of the flow",
+      },
+      {
+        name: "specificVersion",
+        type: "number",
+        label: "Version Number",
+        optional: true,
+        showInNode: false,
+        placeholder: "1",
+        show: { flowVersion: "specific" },
+        description: "Specific version number to use",
+      },
+      {
+        name: "showInternalEvents",
+        type: "boolean",
+        label: "Show Internal Node Events",
+        default: false,
+        optional: true,
+        showInNode: false,
+        description: "If true, stream events from internal subflow nodes. If false, treat as black box (only show start/complete).",
+      },
+      {
+        name: "eventMode",
+        type: "options",
+        label: "Event Mode",
+        default: "full",
+        optional: true,
+        showInNode: false,
+        options: [
+          { name: "full", label: "Full Streaming" },
+          { name: "status_only", label: "Status Only" },
+          { name: "transient_events", label: "Transient Events" },
+          { name: "silent", label: "Silent" },
+        ],
+        description: "Full: streams to chat. Status Only: progress indicators. Transient Events: all events prefixed with data-agent-flow-node-*. Silent: no events.",
+      },
+    ],
+    outputs: ["output"],
+  },
+
   // Tool Node
   {
     type: "toolAgentflow",
@@ -300,7 +378,7 @@ export const NODE_DEFS: NodeDefinition[] = [
         placeholder: "Choose a tool...",
         showInNode: true,
         description: "Select a tool from the database",
-        fetchUrl: "/api/nodes/tools",
+        dataSource: "tools",
       },
       {
         name: "functionDoc",
@@ -457,7 +535,7 @@ export const NODE_DEFS: NodeDefinition[] = [
         label: "Query Selection",
         optional: false,
         showInNode: true,
-        fetchUrl: "/api/nodes/data-handlers",
+        dataSource: "dataHandlers",
         description: "Select a pre-configured database query to execute",
       },
       {

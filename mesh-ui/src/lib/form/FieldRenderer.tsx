@@ -35,6 +35,30 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
   const [customLoading, setCustomLoading] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
 
+  // Fetch custom options for asyncOptions type - must be at top level (rules of hooks)
+  useEffect(() => {
+    if (input.type === "asyncOptions" && input.fetchUrl) {
+      setCustomLoading(true);
+      setCustomError(null);
+
+      const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+
+      fetch(`${API_URL}${input.fetchUrl}`)
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to fetch options: ${res.statusText}`);
+          return res.json();
+        })
+        .then(data => {
+          setCustomOptions(data);
+          setCustomLoading(false);
+        })
+        .catch(err => {
+          setCustomError(err.message);
+          setCustomLoading(false);
+        });
+    }
+  }, [input.type, input.fetchUrl]);
+
   switch (input.type) {
     case "string":
       if (input.rows && input.rows > 1) {
@@ -154,35 +178,12 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
       );
 
     case "asyncOptions": {
-      // Handle dynamic options from backend
+      // Handle dynamic options from backend context (loaded once at startup)
       let dynamicOptions: { name: string; label: string }[] = [];
       let isLoading = false;
       let error: string | null = null;
 
-      // Support custom fetch URL
-      useEffect(() => {
-        if (input.fetchUrl) {
-          setCustomLoading(true);
-          setCustomError(null);
-
-          const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
-
-          fetch(`${API_URL}${input.fetchUrl}`)
-            .then(res => {
-              if (!res.ok) throw new Error(`Failed to fetch options: ${res.statusText}`);
-              return res.json();
-            })
-            .then(data => {
-              setCustomOptions(data);
-              setCustomLoading(false);
-            })
-            .catch(err => {
-              setCustomError(err.message);
-              setCustomLoading(false);
-            });
-        }
-      }, [input.fetchUrl]);
-
+      // Use custom fetch URL options (fetched in useEffect above) - deprecated, prefer dataSource
       if (input.fetchUrl) {
         dynamicOptions = customOptions;
         isLoading = customLoading;
@@ -195,12 +196,27 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
         isLoading = backend.agentsLoading;
         error = backend.agentsError;
       } else if (input.dataSource === "tools") {
-        dynamicOptions = backend.tools.map((tool) => ({
-          name: tool.id,
-          label: tool.name,
+        // Use toolNodes from context (has full metadata)
+        dynamicOptions = backend.toolNodes.map((tool) => ({
+          name: tool.name, // UUID
+          label: tool.label,
         }));
-        isLoading = backend.toolsLoading;
-        error = backend.toolsError;
+        isLoading = backend.toolNodesLoading;
+        error = backend.toolNodesError;
+      } else if (input.dataSource === "agentFlows") {
+        dynamicOptions = backend.agentFlows.map((flow) => ({
+          name: flow.name, // UUID
+          label: flow.label,
+        }));
+        isLoading = backend.agentFlowsLoading;
+        error = backend.agentFlowsError;
+      } else if (input.dataSource === "dataHandlers") {
+        dynamicOptions = backend.dataHandlers.map((handler) => ({
+          name: handler.name, // UUID
+          label: handler.label,
+        }));
+        isLoading = backend.dataHandlersLoading;
+        error = backend.dataHandlersError;
       }
 
       return (
@@ -249,18 +265,19 @@ export function FieldRenderer({ input, value, onChange, nodeId, edges }: FieldRe
     }
 
     case "multiAsyncSelect": {
-      // Multi-select for tools/agents from backend
+      // Multi-select for tools/agents from backend context
       let dynamicOptions: { name: string; label: string }[] = [];
       let isLoading = false;
       let error: string | null = null;
 
       if (input.dataSource === "tools") {
-        dynamicOptions = backend.tools.map((tool) => ({
-          name: tool.id,
-          label: tool.name,
+        // Use toolNodes from context (has full metadata)
+        dynamicOptions = backend.toolNodes.map((tool) => ({
+          name: tool.name, // UUID
+          label: tool.label,
         }));
-        isLoading = backend.toolsLoading;
-        error = backend.toolsError;
+        isLoading = backend.toolNodesLoading;
+        error = backend.toolNodesError;
       }
 
       // Parse current value (array of tool IDs)
