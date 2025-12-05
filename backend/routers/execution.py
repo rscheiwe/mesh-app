@@ -41,7 +41,71 @@ async def execute_graph(request: ExecuteRequest, req: Request):
 
     # Parse React Flow JSON
     try:
-        parser = ReactFlowParser(registry)
+        # Create flow loader for subflow expansion
+        def create_flow_loader(user_id: int = 129617):
+            """Create a flow loader function for subflow expansion."""
+            def load_flow(flow_uuid: str, version: int = None):
+                """Load flow definition from database."""
+                load_session = get_db_session()
+                try:
+                    from sqlalchemy import text
+                    if version:
+                        query = text("""
+                            SELECT nodes, edges, viewport
+                            FROM mosaic_agent_flow
+                            WHERE agent_uuid = :flow_uuid
+                            AND user_id = :user_id
+                            AND version = :version
+                        """)
+                        result = load_session.execute(query, {
+                            "flow_uuid": flow_uuid,
+                            "user_id": user_id,
+                            "version": version
+                        })
+                    else:
+                        query = text("""
+                            SELECT nodes, edges, viewport
+                            FROM mosaic_agent_flow
+                            WHERE agent_uuid = :flow_uuid
+                            AND user_id = :user_id
+                            ORDER BY version DESC, id DESC
+                            LIMIT 1
+                        """)
+                        result = load_session.execute(query, {
+                            "flow_uuid": flow_uuid,
+                            "user_id": user_id
+                        })
+
+                    record = result.fetchone()
+                    if not record:
+                        return None
+
+                    record_dict = dict(record._mapping)
+
+                    # Parse JSON fields
+                    nodes = record_dict.get('nodes', '[]')
+                    if isinstance(nodes, str):
+                        nodes = json.loads(nodes)
+
+                    edges = record_dict.get('edges', '[]')
+                    if isinstance(edges, str):
+                        edges = json.loads(edges)
+
+                    viewport = record_dict.get('viewport', '{}')
+                    if isinstance(viewport, str):
+                        viewport = json.loads(viewport)
+
+                    return {
+                        "nodes": nodes,
+                        "edges": edges,
+                        "viewport": viewport,
+                    }
+                finally:
+                    load_session.close()
+
+            return load_flow
+
+        parser = ReactFlowParser(registry, flow_loader=create_flow_loader())
         graph = parser.parse(request.flow)
 
         # Inject dependencies into special nodes
@@ -177,8 +241,72 @@ async def execute_graph_sync(request: ExecuteSyncRequest, req: Request):
     registry.db_session_getter = get_db_session
 
     try:
+        # Create flow loader for subflow expansion
+        def create_flow_loader_sync(user_id: int = 129617):
+            """Create a flow loader function for subflow expansion."""
+            def load_flow(flow_uuid: str, version: int = None):
+                """Load flow definition from database."""
+                load_session = get_db_session()
+                try:
+                    from sqlalchemy import text
+                    if version:
+                        query = text("""
+                            SELECT nodes, edges, viewport
+                            FROM mosaic_agent_flow
+                            WHERE agent_uuid = :flow_uuid
+                            AND user_id = :user_id
+                            AND version = :version
+                        """)
+                        result = load_session.execute(query, {
+                            "flow_uuid": flow_uuid,
+                            "user_id": user_id,
+                            "version": version
+                        })
+                    else:
+                        query = text("""
+                            SELECT nodes, edges, viewport
+                            FROM mosaic_agent_flow
+                            WHERE agent_uuid = :flow_uuid
+                            AND user_id = :user_id
+                            ORDER BY version DESC, id DESC
+                            LIMIT 1
+                        """)
+                        result = load_session.execute(query, {
+                            "flow_uuid": flow_uuid,
+                            "user_id": user_id
+                        })
+
+                    record = result.fetchone()
+                    if not record:
+                        return None
+
+                    record_dict = dict(record._mapping)
+
+                    # Parse JSON fields
+                    nodes = record_dict.get('nodes', '[]')
+                    if isinstance(nodes, str):
+                        nodes = json.loads(nodes)
+
+                    edges = record_dict.get('edges', '[]')
+                    if isinstance(edges, str):
+                        edges = json.loads(edges)
+
+                    viewport = record_dict.get('viewport', '{}')
+                    if isinstance(viewport, str):
+                        viewport = json.loads(viewport)
+
+                    return {
+                        "nodes": nodes,
+                        "edges": edges,
+                        "viewport": viewport,
+                    }
+                finally:
+                    load_session.close()
+
+            return load_flow
+
         # Parse and execute
-        parser = ReactFlowParser(registry)
+        parser = ReactFlowParser(registry, flow_loader=create_flow_loader_sync())
         graph = parser.parse(request.flow)
 
         # Inject dependencies into special nodes

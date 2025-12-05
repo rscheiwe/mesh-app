@@ -1,5 +1,6 @@
 """API endpoints for custom node management."""
 
+import json
 from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import text
@@ -96,13 +97,13 @@ async def get_tool_options(
     """Get Tool options for dropdown selection.
 
     Returns:
-        List of options with name (uuid) and label
+        List of options with name (uuid), label, inputs, and outputs
     """
     try:
         query = text("""
             SELECT
                 node_uuid, label, description,
-                inputs
+                inputs, outputs
             FROM mosaic_agent_tool_nodes
             WHERE user_id = :user_id
             AND type = 'Tool'
@@ -116,11 +117,21 @@ async def get_tool_options(
         options = []
         for record in records:
             record_dict = dict(record._mapping)
+
+            # Parse outputs if it's a JSON string
+            outputs = record_dict.get('outputs', ['output'])
+            if isinstance(outputs, str):
+                try:
+                    outputs = json.loads(outputs)
+                except:
+                    outputs = ['output']
+
             options.append({
                 "name": str(record_dict['node_uuid']),
                 "label": record_dict['label'],
                 "description": record_dict.get('description', ''),
-                "inputs": record_dict.get('inputs', [])
+                "inputs": record_dict.get('inputs', []),
+                "outputs": outputs or ['output'],
             })
 
         return options
@@ -128,6 +139,147 @@ async def get_tool_options(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load tools: {str(e)}"
+        )
+    finally:
+        session.close()
+
+
+@router.get("/agent-flows", response_model=List[Dict[str, Any]])
+async def get_agent_flow_options(
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session)
+) -> List[Dict[str, Any]]:
+    """Get saved Agent Flow options for dropdown selection.
+
+    Returns:
+        List of options with name (agent_uuid) and label (agent_name)
+    """
+    try:
+        # Query distinct agent flows (latest version of each)
+        query = text("""
+            SELECT DISTINCT ON (agent_uuid)
+                agent_uuid,
+                agent_name,
+                description,
+                version
+            FROM mosaic_agent_flow
+            WHERE user_id = :user_id
+            ORDER BY agent_uuid, version DESC, id DESC
+        """)
+
+        result = session.execute(query, {"user_id": user_id})
+        records = result.fetchall()
+
+        options = []
+        for record in records:
+            record_dict = dict(record._mapping)
+            options.append({
+                "name": str(record_dict['agent_uuid']),
+                "label": record_dict['agent_name'] or f"Flow {record_dict['agent_uuid'][:8]}",
+                "description": record_dict.get('description', ''),
+                "version": record_dict.get('version', 1),
+            })
+
+        return options
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load agent flows: {str(e)}"
+        )
+    finally:
+        session.close()
+
+
+@router.get("/agent-flows/{flow_uuid}")
+async def get_agent_flow(
+    flow_uuid: str,
+    version: int = None,
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    """Get a specific agent flow by UUID.
+
+    Args:
+        flow_uuid: Agent flow UUID
+        version: Optional specific version (defaults to latest)
+
+    Returns:
+        Flow definition including React Flow JSON
+    """
+    try:
+        if version:
+            # Get specific version
+            query = text("""
+                SELECT
+                    agent_uuid, agent_name, description, version,
+                    nodes, edges, viewport
+                FROM mosaic_agent_flow
+                WHERE agent_uuid = :flow_uuid
+                AND user_id = :user_id
+                AND version = :version
+            """)
+            result = session.execute(query, {
+                "flow_uuid": flow_uuid,
+                "user_id": user_id,
+                "version": version
+            })
+        else:
+            # Get latest version
+            query = text("""
+                SELECT
+                    agent_uuid, agent_name, description, version,
+                    nodes, edges, viewport
+                FROM mosaic_agent_flow
+                WHERE agent_uuid = :flow_uuid
+                AND user_id = :user_id
+                ORDER BY version DESC, id DESC
+                LIMIT 1
+            """)
+            result = session.execute(query, {
+                "flow_uuid": flow_uuid,
+                "user_id": user_id
+            })
+
+        record = result.fetchone()
+
+        if not record:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent flow {flow_uuid} not found"
+                       + (f" at version {version}" if version else "")
+            )
+
+        import json
+        record_dict = dict(record._mapping)
+
+        # Parse JSON fields
+        nodes = record_dict.get('nodes', '[]')
+        if isinstance(nodes, str):
+            nodes = json.loads(nodes)
+
+        edges = record_dict.get('edges', '[]')
+        if isinstance(edges, str):
+            edges = json.loads(edges)
+
+        viewport = record_dict.get('viewport', '{}')
+        if isinstance(viewport, str):
+            viewport = json.loads(viewport)
+
+        return {
+            "agent_uuid": str(record_dict['agent_uuid']),
+            "agent_name": record_dict['agent_name'],
+            "description": record_dict.get('description', ''),
+            "version": record_dict.get('version', 1),
+            "nodes": nodes,
+            "edges": edges,
+            "viewport": viewport,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load agent flow: {str(e)}"
         )
     finally:
         session.close()
