@@ -1,7 +1,7 @@
 -- Seed DataHandler nodes into mosaic_agent_tool_nodes table
 -- Run this against your taboolabot-api database
 
--- 1. Get Active Users
+-- 1. Get Active Users (has fixed default params - LLM doesn't need to provide)
 INSERT INTO mosaic_agent_tool_nodes (
     node_uuid,
     user_id,
@@ -38,36 +38,43 @@ INSERT INTO mosaic_agent_tool_nodes (
     'DataHandler',
     'Database',
     'Data Operations',
-    'Query active users from database',
+    'Query active users from database. Returns users with specified status.',
     '["DataHandler"]',
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "label": "Database Source",
-            "options": [
-                {"name": "postgres", "label": "PostgreSQL"},
-                {"name": "mysql", "label": "MySQL"}
-            ],
-            "default": "postgres",
-            "optional": false
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "label": "SQL Query",
-            "default": "SELECT id, name, email, created_at FROM users WHERE status = :status ORDER BY created_at DESC LIMIT :limit",
-            "optional": false
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "label": "Query Parameters (JSON)",
-            "default": "{\"status\": \"active\", \"limit\": 10}",
-            "optional": true
-        }
-    ]'::jsonb,
-    '["rows", "count"]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'name', 'db_source',
+            'type', 'options',
+            'label', 'Database Source',
+            'options', jsonb_build_array(
+                jsonb_build_object('name', 'postgres', 'label', 'PostgreSQL'),
+                jsonb_build_object('name', 'mysql', 'label', 'MySQL')
+            ),
+            'default', 'postgres',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query',
+            'type', 'code',
+            'label', 'SQL Query',
+            'default', E'SELECT\n  id,\n  name,\n  email,\n  created_at\nFROM users\nWHERE status = :status\nORDER BY created_at DESC\nLIMIT :limit',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query_params',
+            'type', 'code',
+            'label', 'Query Parameters Schema',
+            'default', '[{"name": "status", "type": "string", "description": "User status to filter by (e.g., active, inactive, pending)", "required": true}, {"name": "limit", "type": "number", "description": "Maximum number of users to return", "required": true}]',
+            'optional', true
+        ),
+        jsonb_build_object(
+            'name', 'params',
+            'type', 'code',
+            'label', 'Default Parameter Values',
+            'default', '{"status": "active", "limit": 10}',
+            'optional', true
+        )
+    ),
+    '["output"]'::jsonb,
     '{}'::jsonb,
     '',
     true,
@@ -75,28 +82,17 @@ INSERT INTO mosaic_agent_tool_nodes (
     false,
     'sql',
     false,
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT id, name, email, created_at FROM users WHERE status = :status ORDER BY created_at DESC LIMIT :limit"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{\"status\": \"active\", \"limit\": 10}"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object('name', 'db_source', 'type', 'options', 'default', 'postgres'),
+        jsonb_build_object('name', 'query', 'type', 'code', 'default', E'SELECT\n  id,\n  name,\n  email,\n  created_at\nFROM users\nWHERE status = :status\nORDER BY created_at DESC\nLIMIT :limit'),
+        jsonb_build_object('name', 'query_params', 'type', 'code', 'default', '[{"name": "status", "type": "string", "description": "User status to filter by (e.g., active, inactive, pending)", "required": true}, {"name": "limit", "type": "number", "description": "Maximum number of users to return", "required": true}]'),
+        jsonb_build_object('name', 'params', 'type', 'code', 'default', '{"status": "active", "limit": 10}')
+    ),
     NOW(),
     NOW()
 );
 
--- 2. Get User Orders
+-- 2. Get User Orders (AI must provide user_id)
 INSERT INTO mosaic_agent_tool_nodes (
     node_uuid,
     user_id,
@@ -133,26 +129,43 @@ INSERT INTO mosaic_agent_tool_nodes (
     'DataHandler',
     'Database',
     'Data Operations',
-    'Get orders for a specific user (AI provides user_id)',
+    'Get orders for a specific user. AI must provide the user_id parameter.',
     '["DataHandler"]',
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT order_id, product, amount, order_date FROM orders WHERE user_id = :user_id ORDER BY order_date DESC"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{}"
-        }
-    ]'::jsonb,
-    '["rows", "count"]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'name', 'db_source',
+            'type', 'options',
+            'label', 'Database Source',
+            'options', jsonb_build_array(
+                jsonb_build_object('name', 'postgres', 'label', 'PostgreSQL'),
+                jsonb_build_object('name', 'mysql', 'label', 'MySQL')
+            ),
+            'default', 'postgres',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query',
+            'type', 'code',
+            'label', 'SQL Query',
+            'default', E'SELECT\n  order_id,\n  product,\n  amount,\n  order_date\nFROM orders\nWHERE user_id = :user_id\nORDER BY order_date DESC',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query_params',
+            'type', 'code',
+            'label', 'Query Parameters Schema',
+            'default', '[{"name": "user_id", "type": "number", "description": "The unique identifier of the user whose orders to retrieve", "required": true}]',
+            'optional', true
+        ),
+        jsonb_build_object(
+            'name', 'params',
+            'type', 'code',
+            'label', 'Default Parameter Values',
+            'default', '{}',
+            'optional', true
+        )
+    ),
+    '["output"]'::jsonb,
     '{}'::jsonb,
     '',
     true,
@@ -160,28 +173,17 @@ INSERT INTO mosaic_agent_tool_nodes (
     false,
     'sql',
     false,
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT order_id, product, amount, order_date FROM orders WHERE user_id = :user_id ORDER BY order_date DESC"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{}"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object('name', 'db_source', 'type', 'options', 'default', 'postgres'),
+        jsonb_build_object('name', 'query', 'type', 'code', 'default', E'SELECT\n  order_id,\n  product,\n  amount,\n  order_date\nFROM orders\nWHERE user_id = :user_id\nORDER BY order_date DESC'),
+        jsonb_build_object('name', 'query_params', 'type', 'code', 'default', '[{"name": "user_id", "type": "number", "description": "The unique identifier of the user whose orders to retrieve", "required": true}]'),
+        jsonb_build_object('name', 'params', 'type', 'code', 'default', '{}')
+    ),
     NOW(),
     NOW()
 );
 
--- 3. Search Products by Category
+-- 3. Search Products by Category (AI must provide category)
 INSERT INTO mosaic_agent_tool_nodes (
     node_uuid,
     user_id,
@@ -218,26 +220,43 @@ INSERT INTO mosaic_agent_tool_nodes (
     'DataHandler',
     'Database',
     'Data Operations',
-    'Search products by category (AI extracts category)',
+    'Search products by category. AI must extract and provide the category from user request.',
     '["DataHandler"]',
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT id, name, price, stock FROM products WHERE category = :category AND stock > 0 ORDER BY price ASC"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{}"
-        }
-    ]'::jsonb,
-    '["rows", "count"]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'name', 'db_source',
+            'type', 'options',
+            'label', 'Database Source',
+            'options', jsonb_build_array(
+                jsonb_build_object('name', 'postgres', 'label', 'PostgreSQL'),
+                jsonb_build_object('name', 'mysql', 'label', 'MySQL')
+            ),
+            'default', 'postgres',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query',
+            'type', 'code',
+            'label', 'SQL Query',
+            'default', E'SELECT\n  id,\n  name,\n  price,\n  stock\nFROM products\nWHERE category = :category\n  AND stock > 0\nORDER BY price ASC',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query_params',
+            'type', 'code',
+            'label', 'Query Parameters Schema',
+            'default', '[{"name": "category", "type": "string", "description": "Product category to search for (e.g., electronics, clothing, books)", "required": true}]',
+            'optional', true
+        ),
+        jsonb_build_object(
+            'name', 'params',
+            'type', 'code',
+            'label', 'Default Parameter Values',
+            'default', '{}',
+            'optional', true
+        )
+    ),
+    '["output"]'::jsonb,
     '{}'::jsonb,
     '',
     true,
@@ -245,28 +264,17 @@ INSERT INTO mosaic_agent_tool_nodes (
     false,
     'sql',
     false,
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT id, name, price, stock FROM products WHERE category = :category AND stock > 0 ORDER BY price ASC"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{}"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object('name', 'db_source', 'type', 'options', 'default', 'postgres'),
+        jsonb_build_object('name', 'query', 'type', 'code', 'default', E'SELECT\n  id,\n  name,\n  price,\n  stock\nFROM products\nWHERE category = :category\n  AND stock > 0\nORDER BY price ASC'),
+        jsonb_build_object('name', 'query_params', 'type', 'code', 'default', '[{"name": "category", "type": "string", "description": "Product category to search for (e.g., electronics, clothing, books)", "required": true}]'),
+        jsonb_build_object('name', 'params', 'type', 'code', 'default', '{}')
+    ),
     NOW(),
     NOW()
 );
 
--- 4. Get Featured Agents
+-- 4. Get Featured Agents (AI must provide val boolean)
 INSERT INTO mosaic_agent_tool_nodes (
     node_uuid,
     user_id,
@@ -303,26 +311,43 @@ INSERT INTO mosaic_agent_tool_nodes (
     'DataHandler',
     'Database',
     'Data Operations',
-    'Query featured agents by disabled status',
+    'Query featured agents filtered by disabled status. AI must provide true/false for the disabled filter.',
     '["DataHandler"]',
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT * FROM mosaic_ext_featured_agents WHERE disabled = :val"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{}"
-        }
-    ]'::jsonb,
-    '["rows", "count"]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'name', 'db_source',
+            'type', 'options',
+            'label', 'Database Source',
+            'options', jsonb_build_array(
+                jsonb_build_object('name', 'postgres', 'label', 'PostgreSQL'),
+                jsonb_build_object('name', 'mysql', 'label', 'MySQL')
+            ),
+            'default', 'postgres',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query',
+            'type', 'code',
+            'label', 'SQL Query',
+            'default', E'SELECT *\nFROM mosaic_ext_featured_agents\nWHERE disabled = :val',
+            'optional', false
+        ),
+        jsonb_build_object(
+            'name', 'query_params',
+            'type', 'code',
+            'label', 'Query Parameters Schema',
+            'default', '[{"name": "val", "type": "boolean", "description": "Filter by disabled status. true = show disabled agents, false = show enabled agents", "required": true}]',
+            'optional', true
+        ),
+        jsonb_build_object(
+            'name', 'params',
+            'type', 'code',
+            'label', 'Default Parameter Values',
+            'default', '{"val": true}',
+            'optional', true
+        )
+    ),
+    '["output"]'::jsonb,
     '{}'::jsonb,
     '',
     true,
@@ -330,23 +355,12 @@ INSERT INTO mosaic_agent_tool_nodes (
     false,
     'sql',
     false,
-    '[
-        {
-            "name": "db_source",
-            "type": "options",
-            "default": "postgres"
-        },
-        {
-            "name": "query",
-            "type": "code",
-            "default": "SELECT * FROM mosaic_ext_featured_agents WHERE disabled = :val"
-        },
-        {
-            "name": "params",
-            "type": "code",
-            "default": "{}"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object('name', 'db_source', 'type', 'options', 'default', 'postgres'),
+        jsonb_build_object('name', 'query', 'type', 'code', 'default', E'SELECT *\nFROM mosaic_ext_featured_agents\nWHERE disabled = :val'),
+        jsonb_build_object('name', 'query_params', 'type', 'code', 'default', '[{"name": "val", "type": "boolean", "description": "Filter by disabled status. true = show disabled agents, false = show enabled agents", "required": true}]'),
+        jsonb_build_object('name', 'params', 'type', 'code', 'default', '{"val": true}')
+    ),
     NOW(),
     NOW()
 );

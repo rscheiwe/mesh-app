@@ -22,5 +22,17 @@
     "name": "Coding Assistant",
     "description": "Generate code with coding agent",
     "file": "04_coding_assistant.json"
+  },
+  {
+    "id": "05_writer_editor_sentiment",
+    "name": "Writer → Editor → Sentiment",
+    "description": "Multi-agent flow: Writer creates, Editor polishes, LLM analyzes sentiment",
+    "file": "05_writer_editor_sentiment.json"
+  },
+  {
+    "id": "06_calculator_explainer",
+    "name": "Calculator → Explainer",
+    "description": "Tool executes calculation, LLM explains the result",
+    "file": "06_calculator_explainer.json"
   }
 ]

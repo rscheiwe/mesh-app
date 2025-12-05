@@ -220,6 +220,35 @@ export const NODE_DEFS: NodeDefinition[] = [
         description: "Select tools from database for this agent to use. Tools will be embedded as inline tool definitions.",
       },
       {
+        name: "streaming",
+        type: "boolean",
+        label: "Streaming",
+        default: true,
+        optional: true,
+        showInNode: false,
+        description: "If true, use run_stream() for token-by-token streaming. If false, use run() for non-streaming (faster, useful for intermediate nodes or structured output).",
+      },
+      {
+        name: "outputSchema",
+        type: "code",
+        label: "Output Schema (JSON)",
+        rows: 10,
+        optional: true,
+        showInNode: false,
+        placeholder: `{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "description": { "type": "string" }
+    },
+    "required": ["name", "description"]
+  }
+}`,
+        description: "JSON Schema for structured output. When set, the agent returns validated structured data instead of raw text. Supports both single objects and arrays.",
+      },
+      {
         name: "useNativeEvents",
         type: "boolean",
         label: "Use Native Events",
@@ -479,7 +508,7 @@ export const NODE_DEFS: NodeDefinition[] = [
         description: "Full: streams to chat. Status Only: progress indicators. Silent: no events.",
       },
     ],
-    outputs: ["rows", "count"],
+    outputs: ["output"],
   },
 
   // Condition Node

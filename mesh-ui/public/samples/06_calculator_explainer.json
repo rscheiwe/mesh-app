@@ -1,0 +1,57 @@
+{
+  "id": "calculator-explainer",
+  "name": "Calculator → Explainer",
+  "description": "Tool executes calculation, LLM explains the result in a friendly way",
+  "nodes": [
+    {
+      "id": "START",
+      "type": "startAgentflow",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "defName": "start",
+        "config": {
+          "id": "START"
+        }
+      }
+    },
+    {
+      "id": "calculator_0",
+      "type": "toolAgentflow",
+      "position": { "x": 300, "y": 300 },
+      "data": {
+        "defName": "tool",
+        "config": {
+          "id": "calculator_0",
+          "toolUuid": "bebfa99d-2b5a-4b05-9c20-c5be0ca29221",
+          "bindings": "{\"a\": 10, \"b\": 5, \"operation\": \"multiply\"}"
+        }
+      }
+    },
+    {
+      "id": "llm_0",
+      "type": "llmAgentflow",
+      "position": { "x": 300, "y": 500 },
+      "data": {
+        "defName": "llm",
+        "config": {
+          "id": "llm_0",
+          "systemPrompt": "The calculation {{calculator_0.output.a}} {{calculator_0.output.operation}} {{calculator_0.output.b}} = {{calculator_0.output.result}}. Explain this result in a friendly way."
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-START-calculator_0",
+      "source": "START",
+      "target": "calculator_0"
+    },
+    {
+      "id": "e-calculator_0-llm_0",
+      "source": "calculator_0",
+      "target": "llm_0",
+      "sourceHandle": "output",
+      "targetHandle": "systemPrompt"
+    }
+  ]
+}

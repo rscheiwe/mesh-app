@@ -1,0 +1,77 @@
+{
+  "id": "writer-editor-sentiment",
+  "name": "Writer → Editor → Sentiment",
+  "description": "Multi-agent flow: Writer creates content, Editor polishes it, LLM analyzes sentiment",
+  "nodes": [
+    {
+      "id": "START",
+      "type": "startAgentflow",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "defName": "start",
+        "config": {
+          "id": "START"
+        }
+      }
+    },
+    {
+      "id": "writer_0",
+      "type": "agentAgentflow",
+      "position": { "x": 300, "y": 300 },
+      "data": {
+        "defName": "agent",
+        "config": {
+          "id": "writer_0",
+          "agent": "writer_agent",
+          "systemPrompt": "You are a creative writer. Write 50 engaging words based on: {{$input}}"
+        }
+      }
+    },
+    {
+      "id": "editor_0",
+      "type": "agentAgentflow",
+      "position": { "x": 300, "y": 500 },
+      "data": {
+        "defName": "agent",
+        "config": {
+          "id": "editor_0",
+          "agent": "editor_agent",
+          "systemPrompt": "You are an editor. Polish and improve this text while keeping it concise: {{writer_0.content}}"
+        }
+      }
+    },
+    {
+      "id": "llm_0",
+      "type": "llmAgentflow",
+      "position": { "x": 300, "y": 700 },
+      "data": {
+        "defName": "llm",
+        "config": {
+          "id": "llm_0",
+          "systemPrompt": "Evaluate {{editor_0.content}} for sentiment. Provide a brief analysis."
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-START-writer_0",
+      "source": "START",
+      "target": "writer_0"
+    },
+    {
+      "id": "e-writer_0-editor_0",
+      "source": "writer_0",
+      "target": "editor_0",
+      "sourceHandle": "content",
+      "targetHandle": "systemPrompt"
+    },
+    {
+      "id": "e-editor_0-llm_0",
+      "source": "editor_0",
+      "target": "llm_0",
+      "sourceHandle": "content",
+      "targetHandle": "systemPrompt"
+    }
+  ]
+}
